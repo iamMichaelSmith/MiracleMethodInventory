@@ -47,7 +47,7 @@ This project demonstrates practical full-stack and cloud engineering applied to 
 ## Key Outcomes
 
 - Replaced an ad hoc, memory-driven inventory process with a structured cloud workflow
-- Created durable event storage for each technician checkout
+- Created durable event storage for each technician's checkout
 - Reduced the risk of silent inventory depletion going unnoticed
 - Preserved compatibility with existing business operations instead of forcing a disruptive process rewrite
 - Established a foundation for future reorder automation, low-stock alerting, and internal reporting
@@ -75,7 +75,7 @@ Technicians were using shop inventory in the normal course of work, but there wa
 - No one had dependable early warning when reorder thresholds were crossed
 - Shortages were discovered after they had already become operational problems
 
-In practical terms, the inventory would tank and no one knew items needed to be ordered until things were already bad. The spreadsheet existed, sure, but a spreadsheet by itself does not magically stop people from grabbing supplies and walking off with them.
+In practical terms, the inventory would tank, and no one knew items needed to be ordered until things were already bad. The spreadsheet existed, sure, but a spreadsheet by itself does not magically stop people from grabbing supplies and walking off with them.
 
 That made this an operations automation problem, not just a form-building problem.
 
@@ -99,7 +99,7 @@ The solution needed to:
 
 ## Solution Overview
 
-The completed system is a cloud-based inventory checkout workflow with a static frontend and a serverless AWS backend. The goal was not to build some bloated internal platform on day one; the goal was to create the smallest thing that would reliably stop inventory from going off the rails.
+The completed system is a cloud-based inventory checkout workflow with a static frontend and a serverless AWS backend. The goal was not to build a bloated internal platform on day one; it was to create the smallest thing that would reliably prevent inventory from going off the rails.
 
 ### Technician Experience
 
@@ -176,7 +176,7 @@ sequenceDiagram
 
 ## System Boundaries
 
-This repository covers the inventory checkout capture layer.
+This repository covers the inventory-checkout-capture layer.
 
 ### Included in this project
 
@@ -219,7 +219,7 @@ Why it fits:
 
 **Purpose:** HTTPS delivery, caching, and public edge access
 
-CloudFront sits in front of S3 so technicians can use a clean HTTPS URL with browser-compatible secure delivery.
+CloudFront sits in front of S3, so technicians can use a clean HTTPS URL for browser-compatible, secure delivery.
 
 Why it fits:
 
@@ -300,7 +300,7 @@ Key UI capabilities:
 
 ### Backend
 
-The backend is a serverless ingestion layer that accepts structured checkout data and routes it into storage plus workflow automation.
+The backend is a serverless ingestion layer that accepts structured checkout data, routes it to storage, and automates workflows.
 
 Core responsibilities:
 
@@ -387,7 +387,7 @@ The workload is event-driven and intermittent. Lambda and API Gateway are a bett
 
 ### 3. DynamoDB Plus Email Instead of Email Alone
 
-Email is useful for workflow integration, but it is not a durable system of record by itself.
+Email is useful for workflow integration, but it is not a durable system of record on its own.
 
 DynamoDB adds:
 
@@ -411,8 +411,8 @@ That tradeoff matters. A technically “perfect” system that nobody adopts is 
 This system improves operations in several ways:
 
 - Inventory usage becomes visible at the moment of checkout
-- Managers gain a durable record of what left inventory
-- The business is less likely to discover shortages after they already affect jobs
+- Managers gain a durable record of what is left in inventory
+- The business is less likely to discover shortages after they have already affected jobs
 - Reorder decisions can become proactive instead of reactive
 - Future low-stock automation becomes technically feasible
 
@@ -424,7 +424,7 @@ The biggest operational win is that inventory depletion no longer depends entire
 
 ### Inventory Visibility Failure
 
-The most important issue was lack of visibility. Materials could be consumed quickly without any timely signal reaching the people responsible for reordering.
+The most important issue was the lack of visibility. Materials could be consumed quickly without any timely signal reaching the people responsible for reordering.
 
 This project solved that by creating a structured checkout event every time materials leave inventory.
 
@@ -439,7 +439,7 @@ This project addressed that by:
 - Supporting multi-item submissions
 - Using constrained dropdowns and quantity controls
 
-Because if using the system feels annoying, people will stop using the system. That is not a theory; that is just how operations work.
+If using the system feels annoying, people will stop using it. That is not a theory; that is just how operations work.
 
 ### Security and Credential Exposure Risk
 
@@ -457,7 +457,7 @@ Current limitations:
 
 - Google Sheets remains the source of truth downstream
 - OpenClaw still depends on inbox processing
-- Low-stock alerting is supported conceptually but not fully implemented end to end here
+- Low-stock alerting is supported conceptually, but not fully implemented end-to-end here
 - There is no internal manager dashboard yet
 - Authentication and role-based access are not yet implemented
 
@@ -477,7 +477,7 @@ Security-conscious design choices include:
 - Email delivery handled server-side through SES
 - Public frontend separated from private automation logic
 
-The current version is optimized for internal operational use, not zero-trust public exposure. Authentication and stricter origin controls are logical next steps if the app evolves.
+The current version is optimized for internal operations, not for zero-trust public exposure. Authentication and stricter origin controls are logical next steps if the app evolves.
 
 ---
 
@@ -563,7 +563,7 @@ This project is worth showing because it demonstrates more than coding ability. 
 - Connect user experience, backend processing, and operational workflow into one coherent system
 - Design for extensibility while delivering immediate value
 
-For employers, this is evidence of product thinking, systems thinking, and execution under practical business constraints. It also shows that I know when to build the right thing instead of the most academically impressive thing.
+For employers, this is evidence of product thinking, systems thinking, and execution under practical business constraints. It also shows that I know when to build the right thing rather than the most academically impressive one.
 
 ---
 
