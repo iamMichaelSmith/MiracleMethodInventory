@@ -9,7 +9,7 @@
 
 ## Elevator Pitch
 
-I built this project to solve a practical inventory-control failure: technicians were consuming materials every day, but the business had no dependable way to capture usage in real time, which meant stockouts were discovered late and reordering happened reactively. The solution is a serverless AWS workflow that captures inventory checkouts at the point of use, stores them durably, and routes them into downstream automation for inventory updates and future low-stock alerting.
+I built this project to solve a very unglamorous but very real inventory problem: technicians were using materials every day, and the business had no dependable way to capture that usage in real time. That meant stockouts were discovered late, reordering was reactive, and everyone got to enjoy the classic “how the hell are we out of that already?” moment. The fix was a serverless AWS workflow that captures inventory checkouts at the point of use, stores them durably, and routes them into downstream automation for inventory updates and future low-stock alerting.
 
 ## Tech Stack
 
@@ -27,7 +27,7 @@ I built this project to solve a practical inventory-control failure: technicians
 
 ## Project Summary
 
-This project is a serverless inventory checkout system designed to solve a recurring operations problem: inventory consumption was happening daily, but there was no reliable process for capturing what technicians took, when stock levels were falling, or when reorders needed to happen.
+This project is a serverless inventory checkout system designed to solve a recurring operations problem: inventory was being consumed every day, but there was no reliable process for capturing what technicians took, when stock levels were falling, or when reorders needed to happen.
 
 That gap caused real business damage:
 
@@ -37,7 +37,7 @@ That gap caused real business damage:
 - purchasing became reactive instead of planned
 - technicians lost time working around missing materials
 
-The system introduced a lightweight technician-facing checkout workflow backed by AWS infrastructure. Technicians submit inventory usage from a mobile-friendly form, AWS stores the submission as a durable event, and the system forwards the checkout into the downstream automation process that OpenClaw uses to update inventory records.
+The system introduced a lightweight technician-facing checkout workflow backed by AWS infrastructure. Technicians submit inventory usage from a mobile-friendly form, AWS stores the submission as a durable event, and the system forwards the checkout into the downstream automation process that OpenClaw uses to update inventory records. Nothing fancy for the sake of being fancy—just a practical system that fixes a practical mess.
 
 This project demonstrates practical full-stack and cloud engineering applied to a real workflow problem, not just a demo application.
 
@@ -65,7 +65,7 @@ This project demonstrates practical full-stack and cloud engineering applied to 
 
 ## Problem Statement
 
-The root issue was not the absence of an inventory sheet. The issue was that the inventory process broke down at the point of consumption.
+The root issue was not the absence of an inventory sheet. The root issue was that the inventory process completely broke down at the point of consumption.
 
 Technicians were using shop inventory in the normal course of work, but there was no consistent, fast, technician-friendly mechanism for logging that usage as it happened. As a result:
 
@@ -74,7 +74,7 @@ Technicians were using shop inventory in the normal course of work, but there wa
 - no one had dependable early warning when reorder thresholds were crossed
 - shortages were discovered after they had already become operational problems
 
-In practical terms, the inventory would tank and no one knew items needed to be ordered until things were already bad.
+In practical terms, the inventory would tank and no one knew items needed to be ordered until things were already bad. The spreadsheet existed, sure, but a spreadsheet by itself does not magically stop people from grabbing supplies and walking off with them.
 
 That made this an operations automation problem, not just a form-building problem.
 
@@ -98,7 +98,7 @@ The solution needed to:
 
 ## Solution Overview
 
-The completed system is a cloud-based inventory checkout workflow with a static frontend and a serverless AWS backend.
+The completed system is a cloud-based inventory checkout workflow with a static frontend and a serverless AWS backend. The goal was not to build some bloated internal platform on day one; the goal was to create the smallest thing that would reliably stop inventory from going off the rails.
 
 ### Technician Experience
 
@@ -318,6 +318,8 @@ This is an intentional transitional architecture:
 - it preserves compatibility with the current workflow
 - it leaves room for more advanced automation later
 
+In other words, I did not rip out the whole process and replace it with something “more modern” just to make a prettier architecture diagram. I fixed the part that was actually costing the business time and money.
+
 ---
 
 ## Representative Use Case
@@ -376,7 +378,7 @@ The user-facing problem was straightforward:
 - choose quantities
 - submit a payload
 
-A plain HTML/CSS/JavaScript frontend was the right decision because it kept complexity low, deployment simple, and maintenance overhead small.
+A plain HTML/CSS/JavaScript frontend was the right decision because it kept complexity low, deployment simple, and maintenance overhead small. A React stack would have been possible. It also would have been overkill as hell for this problem.
 
 ### 2. Serverless Backend Instead of a Persistent App Server
 
@@ -399,6 +401,8 @@ The goal was not to replace every existing process at once. The goal was to fix 
 
 Routing structured data into the monitored inbox preserved continuity while significantly improving data capture quality.
 
+That tradeoff matters. A technically “perfect” system that nobody adopts is useless. A practical system that fits the way people already work is usually the better bet.
+
 ---
 
 ## Outcome and Business Impact
@@ -411,7 +415,7 @@ This system improves operations in several ways:
 - reorder decisions can become proactive instead of reactive
 - future low-stock automation becomes technically feasible
 
-The biggest operational win is that inventory depletion no longer depends entirely on memory, manual follow-up, or delayed spreadsheet updates.
+The biggest operational win is that inventory depletion no longer depends entirely on memory, manual follow-up, or delayed spreadsheet updates. That alone cuts out a lot of avoidable chaos.
 
 ---
 
@@ -433,6 +437,8 @@ This project addressed that by:
 - minimizing required inputs
 - supporting multi-item submissions
 - using constrained dropdowns and quantity controls
+
+Because if using the system feels annoying, people will stop using the system. That is not a theory; that is just how operations work.
 
 ### Security and Credential Exposure Risk
 
@@ -556,7 +562,7 @@ This project is worth showing because it demonstrates more than coding ability. 
 - connect user experience, backend processing, and operational workflow into one coherent system
 - design for extensibility while delivering immediate value
 
-For employers, this is evidence of product thinking, systems thinking, and execution under practical business constraints.
+For employers, this is evidence of product thinking, systems thinking, and execution under practical business constraints. It also shows that I know when to build the right thing instead of the most academically impressive thing.
 
 ---
 
