@@ -1,0 +1,86 @@
+{
+  "name": "Miracle Method Inventory Checkout Email Intake (import)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "miracle-inventory-checkout",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Checkout Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [ -720, 0 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\nconst technician = String(body.technician ?? '').trim();\nconst items = Array.isArray(body.items) ? body.items : [];\nif (!technician) throw new Error('technician is required');\nif (!items.length) throw new Error('at least one item is required');\nconst timestamp = body.timestamp || new Date().toISOString();\nconst requestId = body.request_id || `fallback-${Date.now()}`;\nconst lines = items.map((item, index) => `${index + 1}. ${item.item_name} | ${item.item_id} | qty=${item.quantity} | unit=${item.unit} | category=${item.category}`);\nreturn [{ json: { request_id: requestId, timestamp, technician, job: String(body.job ?? ''), item_count: items.length, items, email_subject: `Inventory Checkout ${technician} ${timestamp}`, email_text: `Inventory checkout submitted.\\n\\nRequest ID: ${requestId}\\nTimestamp: ${timestamp}\\nTechnician: ${technician}\\nJob: ${String(body.job ?? '') || 'N/A'}\\nItem Count: ${items.length}\\n\\nItems:\\n${lines.join('\\n')}` } }];"
+      },
+      "id": "2",
+      "name": "Validate And Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ -460, 0 ]
+    },
+    {
+      "parameters": {
+        "resource": "email",
+        "operation": "send",
+        "fromEmail": "Blakmarigold@gmail.com",
+        "toEmail": "Blakmarigold@gmail.com",
+        "subject": "={{$json.email_subject}}",
+        "emailFormat": "text",
+        "text": "={{$json.email_text}}"
+      },
+      "id": "3",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [ -200, 0 ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {'status':'ok','request_id':$json.request_id,'item_count':$json.item_count,'timestamp':$json.timestamp} }}"
+      },
+      "id": "4",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [ 60, 0 ]
+    }
+  ],
+  "connections": {
+    "Checkout Webhook": {
+      "main": [
+        [
+          { "node": "Validate And Format", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Validate And Format": {
+      "main": [
+        [
+          { "node": "Send Email", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          { "node": "Webhook Response", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

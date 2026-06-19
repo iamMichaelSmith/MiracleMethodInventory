@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Miracle Method Inventory Checkout</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <h1>Miracle Method Inventory Checkout</h1>
+      <p>Submit shop inventory checkouts for OpenClaw email processing.</p>
+    </header>
+
+    <form id="checkout-form" novalidate>
+      <section class="panel">
+        <div class="field-grid">
+          <label class="field">
+            <span>Technician</span>
+            <select id="technician" name="technician" required>
+              <option value="">Select technician</option>
+              <option value="Mike S">Mike S</option>
+              <option value="Mike J">Mike J</option>
+              <option value="Kris">Kris</option>
+              <option value="Josh">Josh</option>
+              <option value="Za">Za</option>
+              <option value="Roy">Roy</option>
+              <option value="Jose">Jose</option>
+              <option value="Irving">Irving</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Job / Customer</span>
+            <input id="job" name="job" type="text" autocomplete="organization" maxlength="120">
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <h2>Paints &amp; Primers</h2>
+          <span>Defaults to 1 gallon when selected</span>
+        </div>
+        <div id="paint-items" class="item-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <h2>Supplies</h2>
+          <span>Choose quantity from 1 to 5</span>
+        </div>
+        <div id="supply-items" class="item-list"></div>
+      </section>
+
+      <section class="panel summary-panel">
+        <div class="section-heading">
+          <h2>Selected Items</h2>
+          <span id="selected-count">0 selected</span>
+        </div>
+        <div id="selection-summary" class="summary-empty">No items selected.</div>
+      </section>
+
+      <section class="actions">
+        <button id="clear-button" class="button button-secondary" type="button">Clear</button>
+        <button id="submit-button" class="button button-primary" type="submit">Submit Checkout</button>
+      </section>
+
+      <p id="form-status" class="status" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

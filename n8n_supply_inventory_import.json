@@ -1,0 +1,235 @@
+﻿{
+  "name": "Miracle method supply Inventory (import)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "miracle-supply-use",
+        "formTitle": "Miracle Method Supply Usage",
+        "formDescription": "Submit used supplies for inventory update",
+        "formFields": {
+          "values": [
+            {
+              "fieldName": "technician",
+              "fieldLabel": "Technician",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  { "option": "Mike S" },
+                  { "option": "Mike J" },
+                  { "option": "Kris" },
+                  { "option": "Za" }
+                ]
+              }
+            },
+            {
+              "fieldName": "item_id",
+              "fieldLabel": "Item ID",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldName": "quantity_used",
+              "fieldLabel": "Quantity Used",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldName": "notes",
+              "fieldLabel": "Notes",
+              "fieldType": "textarea",
+              "requiredField": false
+            }
+          ]
+        },
+        "responseMode": "responseNode"
+      },
+      "id": "1",
+      "name": "Tech Supply Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [ -980, 0 ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/13WF8Z2r88IMG-Bwvmj_Ys1rGC5gP01O_bacZmTwzVZg/edit"
+        },
+        "sheetName": {
+          "mode": "name",
+          "value": "inventory"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Item ID",
+              "lookupValue": "={{ $json.item_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2",
+      "name": "Get Inventory Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [ -740, 0 ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const row = $input.item.json;\nconst form = $('Tech Supply Form').item.json;\nconst currentQty = Number(row['Current Quantity'] ?? 0);\nconst used = Number(form.quantity_used ?? 0);\nif (!form.item_id) throw new Error('item_id is required');\nif (!Number.isFinite(used) || used <= 0) throw new Error('quantity_used must be > 0');\nconst newQty = Math.max(0, currentQty - used);\nreturn { ...row, technician: form.technician, item_id: form.item_id, quantity_used: used, notes_input: form.notes ?? '', new_quantity: newQty, low_stock: newQty <= 5, updated_at: new Date().toISOString() };"
+      },
+      "id": "3",
+      "name": "Calculate New Quantity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ -500, 0 ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "update",
+        "dataMode": "defineBelow",
+        "documentId": {
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/13WF8Z2r88IMG-Bwvmj_Ys1rGC5gP01O_bacZmTwzVZg/edit"
+        },
+        "sheetName": {
+          "mode": "name",
+          "value": "inventory"
+        },
+        "columnToMatchOn": "Item ID",
+        "valueToMatchOn": "={{ $json.item_id }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "Current Quantity",
+              "fieldValue": "={{ $json.new_quantity }}"
+            },
+            {
+              "fieldId": "Low Stock Alert Status",
+              "fieldValue": "={{ $json.low_stock ? 'LOW' : 'OK' }}"
+            },
+            {
+              "fieldId": "Last Alert Date",
+              "fieldValue": "={{ $json.updated_at }}"
+            },
+            {
+              "fieldId": "Notes",
+              "fieldValue": "={{ $json.notes_input }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4",
+      "name": "Update Inventory Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [ -260, 0 ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.low_stock }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "5",
+      "name": "If Low Stock",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [ -20, 0 ]
+    },
+    {
+      "parameters": {
+        "resource": "email",
+        "operation": "send",
+        "fromEmail": "Blakmarigold@gmail.com",
+        "toEmail": "Blakmarigold@gmail.com",
+        "subject": "LOW STOCK: {{$json['Item Name']}} ({{$json.item_id}})",
+        "emailFormat": "text",
+        "text": "Item {{$json['Item Name']}} ({{$json.item_id}}) is low. Current Quantity: {{$json.new_quantity}}. Threshold: 5. Used: {{$json.quantity_used}} by {{$json.technician}}. Notes: {{$json.notes_input}}"
+      },
+      "id": "6",
+      "name": "Email Manager",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [ 240, -140 ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {'status':'ok','item_id':$json.item_id,'new_quantity':$json.new_quantity,'low_stock':$json.low_stock} }}"
+      },
+      "id": "7",
+      "name": "Form Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [ 240, 120 ]
+    }
+  ],
+  "connections": {
+    "Tech Supply Form": {
+      "main": [
+        [
+          { "node": "Get Inventory Row", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Inventory Row": {
+      "main": [
+        [
+          { "node": "Calculate New Quantity", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Calculate New Quantity": {
+      "main": [
+        [
+          { "node": "Update Inventory Row", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Update Inventory Row": {
+      "main": [
+        [
+          { "node": "If Low Stock", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "If Low Stock": {
+      "main": [
+        [
+          { "node": "Email Manager", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Form Response", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Email Manager": {
+      "main": [
+        [
+          { "node": "Form Response", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
