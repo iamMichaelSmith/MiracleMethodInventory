@@ -8,7 +8,8 @@ const {
   TABLE_NAME,
   SES_FROM_EMAIL,
   SES_TO_EMAILS = "",
-  ALLOWED_ORIGIN = "*"
+  ALLOWED_ORIGIN = "*",
+  INVENTORY_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/13WF8Z2r88IMG-Bwvmj_Ys1rGC5gP01O_bacZmTwzVZg/gviz/tq?tqx=out:csv&gid=232622180"
 } = process.env;
 
 function response(statusCode, body) {
@@ -17,11 +18,135 @@ function response(statusCode, body) {
     headers: {
       "content-type": "application/json",
       "access-control-allow-origin": ALLOWED_ORIGIN,
-      "access-control-allow-methods": "OPTIONS,POST",
+      "access-control-allow-methods": "OPTIONS,GET,POST",
       "access-control-allow-headers": "content-type"
     },
     body: JSON.stringify(body)
   };
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let value = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    const next = text[index + 1];
+
+    if (char === '"' && inQuotes && next === '"') {
+      value += '"';
+      index += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      row.push(value);
+      value = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") {
+        index += 1;
+      }
+      row.push(value);
+      if (row.some((field) => field.trim())) {
+        rows.push(row);
+      }
+      row = [];
+      value = "";
+      continue;
+    }
+
+    value += char;
+  }
+
+  if (value || row.length) {
+    row.push(value);
+    if (row.some((field) => field.trim())) {
+      rows.push(row);
+    }
+  }
+
+  return rows;
+}
+
+function normalizeHeader(header) {
+  return String(header).trim().toLowerCase();
+}
+
+function rowsToObjects(rows) {
+  const [headers = [], ...dataRows] = rows;
+  return dataRows.map((row) => {
+    const record = {};
+    headers.forEach((header, index) => {
+      record[normalizeHeader(header)] = String(row[index] ?? "").trim();
+    });
+    return record;
+  });
+}
+
+async function getInventoryItems() {
+  const sheetResponse = await fetch(INVENTORY_SHEET_CSV_URL);
+  if (!sheetResponse.ok) {
+    throw new Error(`inventory sheet fetch failed: ${sheetResponse.status}`);
+  }
+
+  const csv = await sheetResponse.text();
+  const rows = rowsToObjects(parseCsv(csv));
+
+  return rows
+    .filter((row) => row["item id"] && row["item name"])
+    .map((row) => {
+      const quantity = Number(row["current quantity"] || 0);
+      const reorderLevel = Number(row["reorder level"] || 0);
+
+      return {
+        item_id: row["item id"],
+        item_name: row["item name"],
+        category: row.category || "",
+        unit: row.unit || "",
+        current_quantity: Number.isFinite(quantity) ? quantity : 0,
+        reorder_level: Number.isFinite(reorderLevel) ? reorderLevel : 0,
+        in_stock: Number.isFinite(quantity) && quantity > 0
+      };
+    });
+}
+
+async function validateStockAvailability(payload) {
+  const inventory = await getInventoryItems();
+  const inventoryById = new Map(inventory.map((item) => [item.item_id, item]));
+  const unavailable = [];
+
+  payload.items.forEach((item) => {
+    const inventoryItem = inventoryById.get(item.item_id);
+    if (!inventoryItem) {
+      unavailable.push(`${item.item_name} is not in the inventory sheet`);
+      return;
+    }
+
+    if (!inventoryItem.in_stock) {
+      unavailable.push(`${item.item_name} is out of stock`);
+      return;
+    }
+
+    if (item.quantity > inventoryItem.current_quantity) {
+      unavailable.push(`${item.item_name} requested ${item.quantity}, only ${inventoryItem.current_quantity} available`);
+    }
+  });
+
+  if (unavailable.length) {
+    const error = new Error(unavailable.join("; "));
+    error.statusCode = 409;
+    throw error;
+  }
 }
 
 function parseBody(event) {
@@ -142,12 +267,24 @@ async function sendEmail(payload) {
 }
 
 export const handler = async (event) => {
-  if (event.requestContext?.http?.method === "OPTIONS") {
+  const method = event.requestContext?.http?.method;
+
+  if (method === "OPTIONS") {
     return response(200, { ok: true });
   }
 
   try {
+    if (method === "GET") {
+      const inventory = await getInventoryItems();
+      return response(200, {
+        status: "ok",
+        item_count: inventory.length,
+        items: inventory
+      });
+    }
+
     const payload = validatePayload(parseBody(event));
+    await validateStockAvailability(payload);
     await storePayload(payload);
     await sendEmail(payload);
 
@@ -160,7 +297,7 @@ export const handler = async (event) => {
     });
   } catch (error) {
     console.error(error);
-    return response(400, {
+    return response(error.statusCode || 400, {
       status: "error",
       message: error.message || "Unhandled error"
     });

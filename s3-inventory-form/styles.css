@@ -137,6 +137,29 @@ select {
   margin-top: 4px;
 }
 
+.stock-label {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.stock-loading {
+  color: var(--muted);
+}
+
+.stock-in {
+  color: var(--success);
+}
+
+.stock-out {
+  color: var(--danger);
+}
+
+.item-row-disabled {
+  opacity: 0.62;
+  background: #f5f7f9;
+}
+
 .quantity-select {
   width: 84px;
 }

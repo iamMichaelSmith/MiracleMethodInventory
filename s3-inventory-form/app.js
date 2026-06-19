@@ -1,5 +1,7 @@
 const CHECKOUT_ENDPOINT_URL = "https://hprceyld1i.execute-api.us-east-1.amazonaws.com/prod/checkout";
+const INVENTORY_ENDPOINT_URL = "https://hprceyld1i.execute-api.us-east-1.amazonaws.com/prod/inventory";
 const EMAIL_FALLBACK_TO = "Blakmarigold@gmail.com";
+const inventoryById = new Map();
 
 const paintAndPrimerItems = [
   { item_id: "PNT_KOHLER_WHITE", item_name: "GlasTech 9000 Kohler White", category: "Paint", unit: "gallon" },
@@ -83,7 +85,26 @@ function renderItems() {
   renderItemSection(supplyContainer, supplyItems, true);
 }
 
+function getInventoryDisplay(itemId) {
+  const inventoryItem = inventoryById.get(itemId);
+  if (!inventoryItem) {
+    return { text: "Checking stock...", className: "stock-label stock-loading", quantity: null, inStock: true };
+  }
+
+  if (!inventoryItem.in_stock) {
+    return { text: "Out of stock", className: "stock-label stock-out", quantity: 0, inStock: false };
+  }
+
+  return {
+    text: `${inventoryItem.current_quantity} available`,
+    className: "stock-label stock-in",
+    quantity: inventoryItem.current_quantity,
+    inStock: true
+  };
+}
+
 function renderItemSection(container, items, withQuantity) {
+  container.replaceChildren();
   const fragment = document.createDocumentFragment();
 
   items.forEach((item) => {
@@ -111,23 +132,35 @@ function renderItemSection(container, items, withQuantity) {
     meta.className = "item-meta";
     meta.textContent = `${item.category} · ${item.unit}`;
 
-    details.append(name, meta);
+    const stock = document.createElement("div");
+    const stockDisplay = getInventoryDisplay(item.item_id);
+    stock.className = stockDisplay.className;
+    stock.textContent = stockDisplay.text;
+
+    details.append(name, meta, stock);
 
     row.appendChild(checkbox);
     row.appendChild(details);
+
+    if (!stockDisplay.inStock) {
+      checkbox.disabled = true;
+      row.classList.add("item-row-disabled");
+    }
 
     if (withQuantity) {
       const select = document.createElement("select");
       select.className = "quantity-select";
       select.dataset.quantityFor = item.item_id;
 
-      for (let value = 1; value <= 5; value += 1) {
+      const maxQuantity = stockDisplay.quantity === null ? 5 : Math.min(5, Math.max(0, Math.floor(stockDisplay.quantity)));
+      for (let value = 1; value <= Math.max(1, maxQuantity); value += 1) {
         const option = document.createElement("option");
         option.value = String(value);
         option.textContent = String(value);
         select.appendChild(option);
       }
 
+      select.disabled = !stockDisplay.inStock;
       select.addEventListener("change", updateSummary);
       row.appendChild(select);
     } else {
@@ -141,6 +174,30 @@ function renderItemSection(container, items, withQuantity) {
   });
 
   container.appendChild(fragment);
+}
+
+async function loadInventory() {
+  if (!INVENTORY_ENDPOINT_URL) {
+    return;
+  }
+
+  try {
+    const response = await fetch(INVENTORY_ENDPOINT_URL);
+    if (!response.ok) {
+      throw new Error(`Inventory unavailable: ${response.status}`);
+    }
+
+    const data = await response.json();
+    inventoryById.clear();
+    (data.items || []).forEach((item) => {
+      inventoryById.set(item.item_id, item);
+    });
+    renderItems();
+    updateSummary();
+  } catch (error) {
+    setStatus(error.message || "Inventory unavailable.", "error");
+    revealStatus();
+  }
 }
 
 function getSelectedItems() {
@@ -216,6 +273,19 @@ function buildPayload() {
   if (!items.length) {
     throw new Error("Select at least one item.");
   }
+
+  items.forEach((item) => {
+    const inventoryItem = inventoryById.get(item.item_id);
+    if (!inventoryItem) {
+      throw new Error(`${item.item_name} is not available in the inventory sheet.`);
+    }
+    if (!inventoryItem.in_stock) {
+      throw new Error(`${item.item_name} is out of stock.`);
+    }
+    if (item.quantity > inventoryItem.current_quantity) {
+      throw new Error(`${item.item_name} only has ${inventoryItem.current_quantity} available.`);
+    }
+  });
 
   return {
     type: "checkout",
@@ -303,3 +373,4 @@ form.addEventListener("submit", handleSubmit);
 
 renderItems();
 updateSummary();
+loadInventory();
