@@ -1,9 +1,13 @@
 ﻿# Miracle Method Inventory Checkout Automation
 
+![Project cover image](./assets/linkedin-project-cover.png)
+
 ## Live Demo
 
 - Form URL: [https://d1llu6tpg70p3f.cloudfront.net](https://d1llu6tpg70p3f.cloudfront.net)
 - GitHub Repo: [https://github.com/iamMichaelSmith/MiracleMethodInventory](https://github.com/iamMichaelSmith/MiracleMethodInventory)
+
+### Quick Access
 
 ![QR code for the live form](./miracle-method-inventory-form-qr.png)
 
@@ -583,3 +587,5 @@ The purpose of this documentation is to explain the implementation, tradeoffs, a
 ## Employer-Facing Summary
 
 Built a serverless inventory checkout automation system to solve a real operational failure in which supply usage was not captured reliably and inventory shortages were discovered too late. Designed and implemented a mobile-friendly checkout frontend plus an AWS backend using S3, CloudFront, API Gateway, Lambda, DynamoDB, and SES. The system captures technician inventory usage as structured events, persists durable records, and routes submissions into downstream automation for inventory updates and future low-stock alerting.
+
+
