@@ -1,0 +1,5 @@
+﻿aws-inventory-backend/function.zip
+aws-inventory-backend/dist/
+aws-inventory-backend/node_modules/
+.DS_Store
+Thumbs.db
