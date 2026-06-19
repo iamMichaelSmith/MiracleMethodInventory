@@ -32,11 +32,11 @@ This project is a serverless inventory checkout system designed to solve a recur
 
 That gap caused real business damage:
 
-- inventory counts drifted away from reality
-- paints and consumables could run out unexpectedly
-- managers often discovered shortages too late
-- purchasing became reactive instead of planned
-- technicians lost time working around missing materials
+- Inventory counts drifted away from reality
+- Paints and consumables could run out unexpectedly
+- Managers often discovered shortages too late
+- Purchasing became reactive instead of planned
+- Technicians lost time working around missing materials
 
 The system introduced a lightweight technician-facing checkout workflow backed by AWS infrastructure. Technicians submit inventory usage from a mobile-friendly form, AWS stores the submission as a durable event, and the system forwards the checkout into the downstream automation process that OpenClaw uses to update inventory records. Nothing fancy for the sake of being fancy—just a practical system that fixes a practical mess.
 
@@ -70,10 +70,10 @@ The root issue was not the absence of an inventory sheet. The root issue was tha
 
 Technicians were using shop inventory in the normal course of work, but there was no consistent, fast, technician-friendly mechanism for logging that usage as it happened. As a result:
 
-- actual on-hand inventory diverged from spreadsheet counts
-- managers lacked real visibility into inventory drawdown
-- no one had dependable early warning when reorder thresholds were crossed
-- shortages were discovered after they had already become operational problems
+- Actual on-hand inventory diverged from spreadsheet counts
+- Managers lacked real visibility into inventory drawdown
+- No one had dependable early warning when reorder thresholds were crossed
+- Shortages were discovered after they had already become operational problems
 
 In practical terms, the inventory would tank and no one knew items needed to be ordered until things were already bad. The spreadsheet existed, sure, but a spreadsheet by itself does not magically stop people from grabbing supplies and walking off with them.
 
@@ -87,13 +87,13 @@ The objective was to create a low-friction system that technicians would actuall
 
 The solution needed to:
 
-- work quickly on a phone
-- require minimal user input
-- support multiple inventory items per checkout
-- keep secrets and private credentials out of browser code
-- create a durable system-of-record event for each checkout
-- feed into the existing OpenClaw + Google Sheets workflow
-- support future low-stock alerting and reorder automation
+- Work quickly on a phone
+- Require minimal user input
+- Support multiple inventory items per checkout
+- Keep secrets and private credentials out of browser code
+- Create a durable system-of-record event for each checkout
+- Feed into the existing OpenClaw + Google Sheets workflow
+- Support future low-stock alerting and reorder automation
 
 ---
 
@@ -105,22 +105,22 @@ The completed system is a cloud-based inventory checkout workflow with a static 
 
 Technicians:
 
-- open a public mobile-friendly inventory form
-- select their name from a controlled dropdown
-- optionally enter job or customer context
-- select paints, primers, and supplies
-- choose quantity for supply items
-- submit the checkout
+- Open a public mobile-friendly inventory form
+- Select their name from a controlled dropdown
+- Optionally enter job or customer context
+- Select paints, primers, and supplies
+- Choose quantity for supply items
+- Submit the checkout
 
 ### Backend Processing
 
 The backend:
 
-1. receives the checkout over HTTPS
-2. validates and normalizes the payload
-3. stores the submission in DynamoDB
-4. sends the checkout via SES email to the monitored operations inbox
-5. supports downstream OpenClaw processing against Google Sheets inventory
+1. Receives the checkout over HTTPS
+2. Validates and normalizes the payload
+3. Stores the submission in DynamoDB
+4. Sends the checkout through SES email to the monitored operations inbox
+5. Supports downstream OpenClaw processing against Google Sheets inventory
 
 This design creates both immediate workflow value and future automation flexibility.
 
@@ -180,18 +180,18 @@ This repository covers the inventory checkout capture layer.
 
 ### Included in this project
 
-- technician-facing inventory checkout UI
-- cloud ingestion endpoint
-- payload validation
-- durable event storage
-- email routing into the monitored operations inbox
+- Technician-facing inventory checkout UI
+- Cloud ingestion endpoint
+- Payload validation
+- Durable event storage
+- Email routing into the monitored operations inbox
 
 ### Downstream but outside this repository
 
 - OpenClaw email parsing logic
 - Google Sheets inventory update logic
-- future reorder decisioning
-- future manager alerting rules
+- Future reorder decisioning
+- Future manager alerting rules
 
 This distinction matters because it shows where the engineered system in this repository stops and where downstream business automation continues.
 
@@ -201,7 +201,7 @@ This distinction matters because it shows where the engineered system in this re
 
 ### Amazon S3
 
-**Purpose:** static frontend hosting
+**Purpose:** Static frontend hosting
 
 S3 stores the inventory form assets:
 
@@ -211,9 +211,9 @@ S3 stores the inventory form assets:
 
 Why it fits:
 
-- low operational overhead
-- inexpensive static hosting
-- ideal for a lightweight internal-use frontend
+- Low operational overhead
+- Inexpensive static hosting
+- Ideal for a lightweight internal-use frontend
 
 ### Amazon CloudFront
 
@@ -223,9 +223,9 @@ CloudFront sits in front of S3 so technicians can use a clean HTTPS URL with bro
 
 Why it fits:
 
-- reliable frontend delivery
+- Reliable frontend delivery
 - HTTPS support
-- better production posture than plain S3 website hosting alone
+- Better production posture than plain S3 website hosting alone
 
 ### Amazon API Gateway
 
@@ -235,9 +235,9 @@ API Gateway receives structured checkout payloads from the frontend and forwards
 
 Why it fits:
 
-- clean separation between client and server logic
-- native integration with Lambda
-- simple browser-oriented API surface
+- Clean separation between client and server logic
+- Native integration with Lambda
+- Simple browser-oriented API surface
 
 ### AWS Lambda
 
@@ -245,16 +245,16 @@ Why it fits:
 
 Lambda handles the application logic:
 
-- request validation
-- payload normalization
-- durable write to DynamoDB
-- outbound SES email trigger
+- Request validation
+- Payload normalization
+- Durable write to DynamoDB
+- Outbound SES email trigger
 
 Why it fits:
 
-- no server management
-- event-driven compute
-- scalable and cost-efficient for intermittent form submissions
+- No server management
+- Event-driven compute
+- Scalable and cost-efficient for intermittent form submissions
 
 ### Amazon DynamoDB
 
@@ -264,9 +264,9 @@ Every successful checkout is stored as a durable event record.
 
 Why that matters:
 
-- creates a system-of-record layer independent of email
-- preserves data even if downstream processing is delayed
-- supports auditability, reporting, and future dashboards
+- Creates a system-of-record layer independent of email
+- Preserves data even if downstream processing is delayed
+- Supports auditability, reporting, and future dashboards
 
 ### Amazon SES
 
@@ -276,8 +276,8 @@ SES sends a structured email version of each checkout to the monitored mailbox t
 
 Why it fits:
 
-- bridges AWS and the current business workflow
-- enables automation without forcing a rewrite of downstream operations
+- Bridges AWS and the current business workflow
+- Enables automation without forcing a rewrite of downstream operations
 
 ---
 
@@ -289,14 +289,14 @@ The frontend is intentionally simple and optimized for technician usage in the s
 
 Key UI capabilities:
 
-- required technician dropdown
-- optional job/customer field
-- paints and primers section
-- supplies section
-- quantity control for supply items only
-- selected-items summary
-- clear/reset action
-- visible success and error feedback
+- Required technician dropdown
+- Optional job/customer field
+- Paints and primers section
+- Supplies section
+- Quantity control for supply items only
+- Selected-items summary
+- Clear/reset action
+- Visible success and error feedback
 
 ### Backend
 
@@ -304,10 +304,10 @@ The backend is a serverless ingestion layer that accepts structured checkout dat
 
 Core responsibilities:
 
-- accept JSON checkouts over HTTPS
-- validate required input
-- persist the event
-- email the submission to the monitored inbox
+- Accept JSON checkouts over HTTPS
+- Validate required input
+- Persist the event
+- Email the submission to the monitored inbox
 
 ### Automation Handoff
 
@@ -315,9 +315,9 @@ OpenClaw reads the monitored mailbox and updates the inventory spreadsheet.
 
 This is an intentional transitional architecture:
 
-- it solves the inventory capture problem immediately
-- it preserves compatibility with the current workflow
-- it leaves room for more advanced automation later
+- It solves the inventory capture problem immediately
+- It preserves compatibility with the current workflow
+- It leaves room for more advanced automation later
 
 In other words, I did not rip out the whole process and replace it with something “more modern” just to make a prettier architecture diagram. I fixed the part that was actually costing the business time and money.
 
@@ -343,29 +343,29 @@ flowchart LR
 
 Each checkout submission includes:
 
-- request type
-- source
-- request ID
-- technician
-- job/customer
-- timestamp
-- selected items
+- Request type
+- Source
+- Request ID
+- Technician
+- Job/customer
+- Timestamp
+- Selected items
 
 Each item includes:
 
-- item ID
-- item name
-- category
-- quantity
-- unit
+- Item ID
+- Item name
+- Category
+- Quantity
+- Unit
 
 This structured model supports:
 
-- durable event logging
-- downstream parsing
-- historical reporting
-- low-stock analysis
-- future reorder automation
+- Durable event logging
+- Downstream parsing
+- Historical reporting
+- Low-stock analysis
+- Future reorder automation
 
 ---
 
@@ -375,9 +375,9 @@ This structured model supports:
 
 The user-facing problem was straightforward:
 
-- choose items
-- choose quantities
-- submit a payload
+- Choose items
+- Choose quantities
+- Submit a payload
 
 A plain HTML/CSS/JavaScript frontend was the right decision because it kept complexity low, deployment simple, and maintenance overhead small. A React stack would have been possible. It also would have been overkill as hell for this problem.
 
@@ -391,10 +391,10 @@ Email is useful for workflow integration, but it is not a durable system of reco
 
 DynamoDB adds:
 
-- persistence
-- recoverability
-- traceability
-- future reporting capability
+- Persistence
+- Recoverability
+- Traceability
+- Future reporting capability
 
 ### 4. Compatibility With Existing Business Operations
 
@@ -410,11 +410,11 @@ That tradeoff matters. A technically “perfect” system that nobody adopts is 
 
 This system improves operations in several ways:
 
-- inventory usage becomes visible at the moment of checkout
-- managers gain a durable record of what left inventory
-- the business is less likely to discover shortages after they already affect jobs
-- reorder decisions can become proactive instead of reactive
-- future low-stock automation becomes technically feasible
+- Inventory usage becomes visible at the moment of checkout
+- Managers gain a durable record of what left inventory
+- The business is less likely to discover shortages after they already affect jobs
+- Reorder decisions can become proactive instead of reactive
+- Future low-stock automation becomes technically feasible
 
 The biggest operational win is that inventory depletion no longer depends entirely on memory, manual follow-up, or delayed spreadsheet updates. That alone cuts out a lot of avoidable chaos.
 
@@ -434,10 +434,10 @@ If the form had been slow or complicated, people would not use it consistently.
 
 This project addressed that by:
 
-- making the form mobile-friendly
-- minimizing required inputs
-- supporting multi-item submissions
-- using constrained dropdowns and quantity controls
+- Making the form mobile-friendly
+- Minimizing required inputs
+- Supporting multi-item submissions
+- Using constrained dropdowns and quantity controls
 
 Because if using the system feels annoying, people will stop using the system. That is not a theory; that is just how operations work.
 
@@ -457,9 +457,9 @@ Current limitations:
 
 - Google Sheets remains the source of truth downstream
 - OpenClaw still depends on inbox processing
-- low-stock alerting is supported conceptually but not fully implemented end to end here
-- there is no internal manager dashboard yet
-- authentication and role-based access are not yet implemented
+- Low-stock alerting is supported conceptually but not fully implemented end to end here
+- There is no internal manager dashboard yet
+- Authentication and role-based access are not yet implemented
 
 These are future enhancement opportunities, not architectural failures.
 
@@ -471,11 +471,11 @@ This project was intentionally structured to avoid leaking sensitive logic into 
 
 Security-conscious design choices include:
 
-- no API keys or credentials stored in browser JavaScript
-- backend processing isolated inside AWS Lambda
-- durable storage handled server-side
-- email delivery handled server-side through SES
-- public frontend separated from private automation logic
+- No API keys or credentials stored in browser JavaScript
+- Backend processing isolated inside AWS Lambda
+- Durable storage handled server-side
+- Email delivery handled server-side through SES
+- Public frontend separated from private automation logic
 
 The current version is optimized for internal operational use, not zero-trust public exposure. Authentication and stricter origin controls are logical next steps if the app evolves.
 
@@ -485,28 +485,28 @@ The current version is optimized for internal operational use, not zero-trust pu
 
 ### Reporting and Visibility
 
-- build an internal admin dashboard on top of DynamoDB records
-- add filtering, search, and recent activity views
-- expose inventory movement history
+- Build an internal admin dashboard on top of DynamoDB records
+- Add filtering, search, and recent activity views
+- Expose inventory movement history
 
 ### Alerting and Reorder Logic
 
-- compare checkouts against current stock automatically
-- calculate threshold crossings
-- notify managers when items hit reorder levels
-- recommend reorder quantities
+- Compare checkouts against current stock automatically
+- Calculate threshold crossings
+- Notify managers when items hit reorder levels
+- Recommend reorder quantities
 
 ### Workflow Expansion
 
-- add inventory restock and delivery-confirmation workflows
-- create vendor intake workflows
-- support direct downstream integrations beyond email
+- Add inventory restock and delivery-confirmation workflows
+- Create vendor intake workflows
+- Support direct downstream integrations beyond email
 
 ### Security and Governance
 
-- add internal authentication
-- restrict allowed origins
-- add environment separation for dev/staging/prod
+- Add internal authentication
+- Restrict allowed origins
+- Add environment separation for dev/staging/prod
 
 ---
 
@@ -541,13 +541,13 @@ MiracleMethodInventory/
 
 This project shows the ability to:
 
-- identify a business operations failure and convert it into technical requirements
-- design a cloud architecture around a real workflow problem
-- build a frontend suited to constrained real-world usage
-- implement a serverless ingestion pipeline in AWS
-- create durable event storage for operational traceability
-- integrate cloud infrastructure with an automation-driven downstream process
-- make pragmatic architectural tradeoffs instead of overengineering
+- Identify a business operations failure and convert it into technical requirements
+- Design a cloud architecture around a real workflow problem
+- Build a frontend suited to constrained real-world usage
+- Implement a serverless ingestion pipeline in AWS
+- Create durable event storage for operational traceability
+- Integrate cloud infrastructure with an automation-driven downstream process
+- Make pragmatic architectural tradeoffs instead of overengineering
 
 This is not just a form. It is an end-to-end operational automation system built around a real inventory-control problem.
 
@@ -557,11 +557,11 @@ This is not just a form. It is an end-to-end operational automation system built
 
 This project is worth showing because it demonstrates more than coding ability. It shows the ability to:
 
-- identify a real business bottleneck
-- translate that bottleneck into concrete system requirements
-- choose pragmatic technologies instead of overbuilding
-- connect user experience, backend processing, and operational workflow into one coherent system
-- design for extensibility while delivering immediate value
+- Identify a real business bottleneck
+- Translate that bottleneck into concrete system requirements
+- Choose pragmatic technologies instead of overbuilding
+- Connect user experience, backend processing, and operational workflow into one coherent system
+- Design for extensibility while delivering immediate value
 
 For employers, this is evidence of product thinking, systems thinking, and execution under practical business constraints. It also shows that I know when to build the right thing instead of the most academically impressive thing.
 
@@ -572,10 +572,10 @@ For employers, this is evidence of product thinking, systems thinking, and execu
 This repository intentionally excludes:
 
 - API keys
-- private credentials
-- secrets
-- mailbox passwords
-- sensitive internal identifiers not required for architectural review
+- Private credentials
+- Secrets
+- Mailbox passwords
+- Sensitive internal identifiers not required for architectural review
 
 The purpose of this documentation is to explain the implementation, tradeoffs, and business impact without exposing sensitive information.
 
