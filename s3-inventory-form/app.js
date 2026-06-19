@@ -2,19 +2,19 @@ const CHECKOUT_ENDPOINT_URL = "https://hprceyld1i.execute-api.us-east-1.amazonaw
 const EMAIL_FALLBACK_TO = "Blakmarigold@gmail.com";
 
 const paintAndPrimerItems = [
-  { item_id: "HAWK_LABS_90KO0001LO_GLASTECH_9000_KOHLER_WHITE", item_name: "GlasTech 9000 Kohler White", category: "Paint", unit: "gallon" },
-  { item_id: "HAWK_LABS_94501LO_GLASTECH_LO_MEDIUM_REDUCER_GAL", item_name: "GlasTech Lo Medium Reducer Gal", category: "Paint", unit: "gallon" },
-  { item_id: "HAWK_LABS_94401LO_GLASTECH_LO_CATALYST_GAL", item_name: "GlasTech Lo Catalyst GAL", category: "Paint", unit: "gallon" },
-  { item_id: "HAWK_LABS_41031_ULTRAGRIP_4100_RESIN_WHITE_GAL", item_name: "UltraGrip 4100 Resin White GAL", category: "Paint", unit: "gallon" },
-  { item_id: "HAWK_LABS_41501_ULTRAGRIP_4100_MEDIUM_REDUCER_GAL", item_name: "UltraGrip 4100 Medium Reducer GAL", category: "Paint", unit: "gallon" },
-  { item_id: "HAWK_LABS_41401AU_ULTRAGRIP_4100_CATALYST_GAL", item_name: "UltraGrip 4100 Catalyst GAL", category: "Paint", unit: "gallon" },
-  { item_id: "HAWK_LABS_96101LO_STONEGARD_LO_SATIN_CLEAR_GAL", item_name: "Stonegard Lo Satin Clear GAL", category: "Paint", unit: "gallon" },
-  { item_id: "HAWK_LABS_92051LO_CLEAR_GLASTECH_9200_GLOSS", item_name: "Clear GlasTech 9200 Gloss", category: "Paint", unit: "gallon" },
-  { item_id: "HAWK_LABS_416511_ULTRAGRIP_4100_RESIN_ALMOND_GAL", item_name: "UltraGrip 4100 Resin Almond GAL", category: "Primer", unit: "gallon" },
-  { item_id: "HAWK_LABS_411971_ULTRAGRIP_4100_RESIN_LIGHT_GRAY_GAL", item_name: "UltraGrip 4100 Resin Light Gray GAL", category: "Primer", unit: "gallon" },
-  { item_id: "HAWK_LABS_41071_ULTRAGRIP_4100_RESIN_BLACK_GAL", item_name: "UltraGrip 4100 Resin Black GAL", category: "Primer", unit: "gallon" },
+  { item_id: "PNT_KOHLER_WHITE", item_name: "GlasTech 9000 Kohler White", category: "Paint", unit: "gallon" },
+  { item_id: "RED_GLASTECH_LO_MEDIUM_REDUCER_GAL", item_name: "GlasTech Lo Medium Reducer Gal", category: "Paint", unit: "gallon" },
+  { item_id: "CAT_GLASTECH_LO_CATALYST_GAL", item_name: "GlasTech Lo Catalyst GAL", category: "Paint", unit: "gallon" },
+  { item_id: "PRM_ULTRAGRIP_4100_RESIN_WHITE_GAL", item_name: "UltraGrip 4100 Resin White GAL", category: "Paint", unit: "gallon" },
+  { item_id: "PRM_ULTRAGRIP_4100_MEDIUM_REDUCER_GAL", item_name: "UltraGrip 4100 Medium Reducer GAL", category: "Paint", unit: "gallon" },
+  { item_id: "PRM_ULTRAGRIP_4100_CATALYST_GAL", item_name: "UltraGrip 4100 Catalyst GAL", category: "Paint", unit: "gallon" },
+  { item_id: "CLR_STONEGARD_LO_SATIN_CLEAR_GAL", item_name: "Stonegard Lo Satin Clear GAL", category: "Paint", unit: "gallon" },
+  { item_id: "CLR_CLEAR_GLASTECH_9200_GLOSS", item_name: "Clear GlasTech 9200 Gloss", category: "Paint", unit: "gallon" },
+  { item_id: "PRM_ULTRAGRIP_4100_RESIN_ALMOND_GAL", item_name: "UltraGrip 4100 Resin Almond GAL", category: "Primer", unit: "gallon" },
+  { item_id: "PRM_ULTRAGRIP_4100_RESIN_LIGHT_GRAY_GAL", item_name: "UltraGrip 4100 Resin Light Gray GAL", category: "Primer", unit: "gallon" },
+  { item_id: "PRM_ULTRAGRIP_4100_RESIN_BLACK_GAL", item_name: "UltraGrip 4100 Resin Black GAL", category: "Primer", unit: "gallon" },
   { item_id: "HAWK_LABS_90KO0001LO_GLASTECH_LO_9000_GLOSS_GAL", item_name: "GlasTech Lo 9000 Gloss GAL", category: "Paint", unit: "gallon" },
-  { item_id: "HAWK_LABS_90KO0471_GLASTECH_LO_9000_ALMOND_GAL", item_name: "GlasTech Lo 9000 Almond GAL", category: "Paint", unit: "gallon" }
+  { item_id: "PNT_GLASTECH_LO_9000_ALMOND_GAL", item_name: "GlasTech Lo 9000 Almond GAL", category: "Paint", unit: "gallon" }
 ];
 
 const supplyItems = [
@@ -30,9 +30,9 @@ const supplyItems = [
   { item_id: "SND_120_GRIT_SANDPAPER", item_name: "120 Grit Sandpaper", category: "Supply", unit: "per" },
   { item_id: "SND_220_GRIT_SANDPAPER", item_name: "220 Grit Sandpaper", category: "Supply", unit: "per" },
   { item_id: "SND_40_GRIT_SANDPAPER", item_name: "40 Grit Sandpaper", category: "Supply", unit: "per" },
-  { item_id: "IQ_HITFSWD800P_800_GRIT_SANDPAPER_SHEET", item_name: "800 Grit Sandpaper (Sheet)", category: "Supply", unit: "per" },
+  { item_id: "SND_1000_GRIT_SANDPAPER", item_name: "1000 Grit Sandpaper", category: "Supply", unit: "per" },
   { item_id: "SND_1500_GRIT_SANDPAPER", item_name: "1500 Grit Sandpaper", category: "Supply", unit: "per" },
-  { item_id: "IQ_MAC020_CHIP_BRUSH", item_name: "Chip Brush", category: "Supply", unit: "per" },
+  { item_id: "SUP_SMALL_PAINT_BRUSH", item_name: "Small Paint Brush", category: "Supply", unit: "per" },
   { item_id: "SUP_FOAM_ROLLERS", item_name: "Foam Rollers", category: "Supply", unit: "per" },
   { item_id: "SUP_DAP_CAULK", item_name: "Dap Caulk", category: "Supply", unit: "per" },
   { item_id: "SUP_SEAM_SEAL", item_name: "Seam Seal", category: "Supply", unit: "per" },
@@ -50,25 +50,15 @@ const supplyItems = [
   { item_id: "SUP_AANDB_BONDING_AGENT", item_name: "A&B Bonding Agent", category: "Supply", unit: "per" },
   { item_id: "SUP_DURAGLASS", item_name: "Duraglass", category: "Supply", unit: "per" },
   { item_id: "SUP_HIGH_TECK_4160_PUTTY", item_name: "High Teck 4160 Putty", category: "Supply", unit: "per" },
-  { item_id: "IQ_USC27114_HARDENER_4OZ_WHITE", item_name: "Hardener (4oz White)", category: "Supply", unit: "per" },
+  { item_id: "SUP_HARDENER", item_name: "Hardener", category: "Supply", unit: "per" },
   { item_id: "SUP_HEAD_SOCKS", item_name: "Head Socks", category: "Supply", unit: "per" },
   { item_id: "SUP_TACK_CLOTH", item_name: "Tack Cloth", category: "Supply", unit: "per" },
-  { item_id: "IQ_COS1201_SPREADER_3_PACK", item_name: "Spreader (3 Pack)", category: "Supply", unit: "pack" },
+  { item_id: "SUP_SPREADER", item_name: "Spreader", category: "Supply", unit: "per" },
   { item_id: "SUP_4_INCH_BLADES", item_name: "4 Inch Blades", category: "Supply", unit: "per" },
   { item_id: "SUP_CLEAR_SILICONE", item_name: "Clear Silicone", category: "Supply", unit: "per" },
   { item_id: "SUP_WHITE_SILICONE", item_name: "White Silicone", category: "Supply", unit: "per" },
-  { item_id: "AMAZON_4_IN_BLADES", item_name: "4 In Blades", category: "Supply", unit: "per" },
-  { item_id: "COSTCO_TERRY_CLOTHS", item_name: "Terry Cloths", category: "Supply", unit: "per" },
-  { item_id: "COSTCO_TRASHBAGS", item_name: "Trashbags", category: "Supply", unit: "per" },
-  { item_id: "IQ_AST4544_GUN_CLEANING_KIT", item_name: "Gun Cleaning Kit", category: "Supply", unit: "per" },
-  { item_id: "IQ_MMM16124_GUN_POT", item_name: "Gun Pot", category: "Supply", unit: "per" },
-  { item_id: "IQ_FIB917_FIBERGLASS_REPAIR_CLOTH", item_name: "Fiberglass Repair Cloth", category: "Supply", unit: "per" },
-  { item_id: "IQ_DYN907_BONDO_SPOT_PUTTY_4_5OZ", item_name: "Bondo Spot Putty (4.5oz)", category: "Supply", unit: "per" },
-  { item_id: "IQ_SAS6937_SPRAY_SUITE_MEDIUM", item_name: "Spray Suite (Medium)", category: "Supply", unit: "per" },
-  { item_id: "AMAZON_SCRAPER", item_name: "Scraper", category: "Supply", unit: "per" },
   { item_id: "HAWK_52584_SRS", item_name: "SRS", category: "Supply", unit: "per" },
-  { item_id: "IQ_HITSPRED_SCOTCH_BRITE", item_name: "Scotch Brite", category: "Supply", unit: "per" },
-  { item_id: "AMAZON_UTILITY_BLADES", item_name: "Utility Blades", category: "Supply", unit: "per" }
+  { item_id: "IQ_HITSPRED_SCOTCH_BRITE", item_name: "Scotch Brite", category: "Supply", unit: "per" }
 ];
 
 const form = document.getElementById("checkout-form");
