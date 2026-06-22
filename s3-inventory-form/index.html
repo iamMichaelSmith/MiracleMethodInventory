@@ -69,6 +69,44 @@
 
       <p id="form-status" class="status" role="status" aria-live="polite"></p>
     </form>
+
+    <section id="confirmation-view" class="confirmation-view" hidden>
+      <div class="panel receipt-panel">
+        <div class="receipt-header">
+          <div>
+            <p class="receipt-kicker">Checkout Submitted</p>
+            <h2>Supply Checkout Summary</h2>
+          </div>
+          <span id="confirmation-item-count" class="receipt-count"></span>
+        </div>
+
+        <div class="receipt-meta">
+          <div>
+            <span>Technician</span>
+            <strong id="confirmation-technician"></strong>
+          </div>
+          <div>
+            <span>Job / Customer</span>
+            <strong id="confirmation-job"></strong>
+          </div>
+          <div>
+            <span>Submitted</span>
+            <strong id="confirmation-timestamp"></strong>
+          </div>
+          <div>
+            <span>Request ID</span>
+            <strong id="confirmation-request-id"></strong>
+          </div>
+        </div>
+
+        <div id="confirmation-items" class="receipt-items"></div>
+
+        <div class="receipt-actions">
+          <button id="new-checkout-button" class="button button-primary" type="button">New Checkout</button>
+          <button id="print-summary-button" class="button button-secondary" type="button">Print / Save</button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script src="./app.js"></script>

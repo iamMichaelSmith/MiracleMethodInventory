@@ -71,6 +71,15 @@ const selectedCount = document.getElementById("selected-count");
 const formStatus = document.getElementById("form-status");
 const submitButton = document.getElementById("submit-button");
 const clearButton = document.getElementById("clear-button");
+const confirmationView = document.getElementById("confirmation-view");
+const confirmationTechnician = document.getElementById("confirmation-technician");
+const confirmationJob = document.getElementById("confirmation-job");
+const confirmationTimestamp = document.getElementById("confirmation-timestamp");
+const confirmationRequestId = document.getElementById("confirmation-request-id");
+const confirmationItemCount = document.getElementById("confirmation-item-count");
+const confirmationItems = document.getElementById("confirmation-items");
+const newCheckoutButton = document.getElementById("new-checkout-button");
+const printSummaryButton = document.getElementById("print-summary-button");
 
 function generateRequestId() {
   if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
@@ -261,6 +270,57 @@ function revealStatus() {
   formStatus.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+function formatTimestamp(timestamp) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return timestamp;
+  }
+
+  return date.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function renderConfirmation(payload) {
+  confirmationTechnician.textContent = payload.technician;
+  confirmationJob.textContent = payload.job || "N/A";
+  confirmationTimestamp.textContent = formatTimestamp(payload.timestamp);
+  confirmationRequestId.textContent = payload.request_id;
+  confirmationItemCount.textContent = `${payload.items.length} item${payload.items.length === 1 ? "" : "s"}`;
+  confirmationItems.replaceChildren();
+
+  payload.items.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "receipt-item";
+
+    const details = document.createElement("div");
+
+    const name = document.createElement("div");
+    name.className = "receipt-item-name";
+    name.textContent = item.item_name;
+
+    const meta = document.createElement("div");
+    meta.className = "receipt-item-meta";
+    meta.textContent = `${item.category} · ${item.item_id}`;
+
+    const quantity = document.createElement("div");
+    quantity.className = "receipt-item-quantity";
+    quantity.textContent = `${item.quantity} ${item.unit}`;
+
+    details.append(name, meta);
+    row.append(details, quantity);
+    confirmationItems.appendChild(row);
+  });
+
+  form.hidden = true;
+  confirmationView.hidden = false;
+  confirmationView.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function buildPayload() {
   const technician = document.getElementById("technician").value.trim();
   const job = document.getElementById("job").value.trim();
@@ -334,6 +394,13 @@ function resetForm(clearStatus = true) {
   }
 }
 
+function startNewCheckout() {
+  resetForm();
+  confirmationView.hidden = true;
+  form.hidden = false;
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 async function handleSubmit(event) {
   event.preventDefault();
   setStatus("");
@@ -345,9 +412,7 @@ async function handleSubmit(event) {
 
     if (CHECKOUT_ENDPOINT_URL) {
       await submitToEndpoint(payload);
-      resetForm(false);
-      setStatus("Checkout submitted successfully.", "success");
-      revealStatus();
+      renderConfirmation(payload);
       return;
     }
 
@@ -370,6 +435,8 @@ async function handleSubmit(event) {
 
 clearButton.addEventListener("click", resetForm);
 form.addEventListener("submit", handleSubmit);
+newCheckoutButton.addEventListener("click", startNewCheckout);
+printSummaryButton.addEventListener("click", () => window.print());
 
 renderItems();
 updateSummary();
