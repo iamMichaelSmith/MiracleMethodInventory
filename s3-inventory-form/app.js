@@ -2,6 +2,7 @@ const CHECKOUT_ENDPOINT_URL = "https://hprceyld1i.execute-api.us-east-1.amazonaw
 const INVENTORY_ENDPOINT_URL = "https://hprceyld1i.execute-api.us-east-1.amazonaws.com/prod/inventory";
 const EMAIL_FALLBACK_TO = "Blakmarigold@gmail.com";
 const inventoryById = new Map();
+let inventoryLoadFailed = false;
 
 const paintAndPrimerItems = [
   { item_id: "PNT_KOHLER_WHITE", item_name: "GlasTech 9000 Kohler White", category: "Paint", unit: "gallon" },
@@ -95,6 +96,10 @@ function renderItems() {
 }
 
 function getInventoryDisplay(itemId) {
+  if (inventoryLoadFailed) {
+    return { text: "Stock check unavailable", className: "stock-label stock-out", quantity: 0, inStock: false };
+  }
+
   const inventoryItem = inventoryById.get(itemId);
   if (!inventoryItem) {
     return { text: "Checking stock...", className: "stock-label stock-loading", quantity: null, inStock: true };
@@ -197,6 +202,7 @@ async function loadInventory() {
     }
 
     const data = await response.json();
+    inventoryLoadFailed = false;
     inventoryById.clear();
     (data.items || []).forEach((item) => {
       inventoryById.set(item.item_id, item);
@@ -204,7 +210,10 @@ async function loadInventory() {
     renderItems();
     updateSummary();
   } catch (error) {
-    setStatus(error.message || "Inventory unavailable.", "error");
+    inventoryLoadFailed = true;
+    renderItems();
+    updateSummary();
+    setStatus("Stock check failed. Open the live CloudFront app instead of the local file, then refresh. Checkout is disabled until stock loads.", "error");
     revealStatus();
   }
 }
