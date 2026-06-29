@@ -74,7 +74,6 @@ const submitButton = document.getElementById("submit-button");
 const clearButton = document.getElementById("clear-button");
 const confirmationView = document.getElementById("confirmation-view");
 const confirmationTechnician = document.getElementById("confirmation-technician");
-const confirmationJob = document.getElementById("confirmation-job");
 const confirmationTimestamp = document.getElementById("confirmation-timestamp");
 const confirmationRequestId = document.getElementById("confirmation-request-id");
 const confirmationItemCount = document.getElementById("confirmation-item-count");
@@ -91,8 +90,23 @@ function generateRequestId() {
 }
 
 function renderItems() {
-  renderItemSection(paintContainer, paintAndPrimerItems, false);
+  renderItemSection(paintContainer, paintAndPrimerItems, true);
   renderItemSection(supplyContainer, supplyItems, true);
+}
+
+function getQuantityOptions(item, availableQuantity) {
+  const stockLimit = availableQuantity === null ? Number.POSITIVE_INFINITY : Math.max(0, Math.floor(availableQuantity));
+  let options = [0, 1];
+
+  if (item.item_id.startsWith("TAP_")) {
+    options = Array.from({ length: 11 }, (_, index) => index);
+  } else if (item.item_id.startsWith("SND_")) {
+    options = [0, 5, 10, 15, 20, 25];
+  } else if (item.category === "Supply") {
+    options = [0, 1, 2, 3, 4, 5];
+  }
+
+  return options.filter((value) => value === 0 || value <= stockLimit);
 }
 
 function getInventoryDisplay(itemId) {
@@ -166,16 +180,25 @@ function renderItemSection(container, items, withQuantity) {
       select.className = "quantity-select";
       select.dataset.quantityFor = item.item_id;
 
-      const maxQuantity = stockDisplay.quantity === null ? 5 : Math.min(5, Math.max(0, Math.floor(stockDisplay.quantity)));
-      for (let value = 1; value <= Math.max(1, maxQuantity); value += 1) {
+      const quantityOptions = getQuantityOptions(item, stockDisplay.quantity);
+      quantityOptions.forEach((value) => {
         const option = document.createElement("option");
         option.value = String(value);
         option.textContent = String(value);
         select.appendChild(option);
-      }
+      });
 
       select.disabled = !stockDisplay.inStock;
-      select.addEventListener("change", updateSummary);
+      select.addEventListener("change", () => {
+        checkbox.checked = Number(select.value) > 0;
+        updateSummary();
+      });
+      checkbox.addEventListener("change", () => {
+        if (!checkbox.checked) {
+          select.value = "0";
+        }
+        updateSummary();
+      });
       row.appendChild(select);
     } else {
       const unit = document.createElement("div");
@@ -223,9 +246,12 @@ function getSelectedItems() {
   const selectedCheckboxes = form.querySelectorAll('input[type="checkbox"]:checked');
 
   selectedCheckboxes.forEach((checkbox) => {
-    const isSupply = checkbox.dataset.category === "Supply";
     const quantitySelect = form.querySelector(`[data-quantity-for="${checkbox.dataset.itemId}"]`);
-    const quantity = isSupply ? Number(quantitySelect?.value ?? 1) : 1;
+    const quantity = Number(quantitySelect?.value ?? 0);
+
+    if (quantity <= 0) {
+      return;
+    }
 
     selections.push({
       item_id: checkbox.dataset.itemId,
@@ -296,7 +322,6 @@ function formatTimestamp(timestamp) {
 
 function renderConfirmation(payload) {
   confirmationTechnician.textContent = payload.technician;
-  confirmationJob.textContent = payload.job || "N/A";
   confirmationTimestamp.textContent = formatTimestamp(payload.timestamp);
   confirmationRequestId.textContent = payload.request_id;
   confirmationItemCount.textContent = `${payload.items.length} item${payload.items.length === 1 ? "" : "s"}`;
@@ -332,7 +357,6 @@ function renderConfirmation(payload) {
 
 function buildPayload() {
   const technician = document.getElementById("technician").value.trim();
-  const job = document.getElementById("job").value.trim();
   const items = getSelectedItems();
 
   if (!technician) {
@@ -361,7 +385,7 @@ function buildPayload() {
     source: "s3_inventory_form",
     request_id: generateRequestId(),
     technician,
-    job,
+    job: "",
     timestamp: new Date().toISOString(),
     items
   };
