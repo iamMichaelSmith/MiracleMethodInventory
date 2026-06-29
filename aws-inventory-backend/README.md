@@ -3,19 +3,24 @@
 Cloud submission path:
 
 - `API Gateway` receives checkout JSON
-- `Lambda` validates and stores payloads
-- `DynamoDB` keeps the raw payload log
-- `SES` emails the checkout to the monitored mailbox
+- `Lambda` validates checkout payloads against the Inventory tab
+- `Lambda` updates Google Sheets through Maton-managed Google Sheets access
+- `DynamoDB` keeps an audit log with checkout status
+- `SES` emails the checkout as a notification only
 
-Current SES limitation:
+Required Lambda environment:
 
-- this AWS account is still in `SES sandbox`
-- email can only be sent to verified identities until sandbox is removed
+- `TABLE_NAME`
+- `MATON_SECRET_ID`
+- `MATON_SHEETS_CONNECTION_ID`
+- `INVENTORY_SPREADSHEET_ID`
+- `INVENTORY_SHEET_NAME`
+- `SES_FROM_EMAIL`
+- `SES_TO_EMAILS`
 
-Current default verified options in this account:
+Current secret:
 
-- `TexasTubandtile@gmail.com`
-- `contact@blakmarigold.com`
+- `miracle-method/maton-api-key` stores the Maton API key in AWS Secrets Manager
 
 Packaging note:
 

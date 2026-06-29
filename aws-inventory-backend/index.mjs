@@ -1,7 +1,9 @@
-import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, PutItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 
 const dynamo = new DynamoDBClient({});
+const secrets = new SecretsManagerClient({});
 const ses = new SESv2Client({});
 
 const {
@@ -9,8 +11,15 @@ const {
   SES_FROM_EMAIL,
   SES_TO_EMAILS = "",
   ALLOWED_ORIGIN = "*",
+  MATON_API_KEY,
+  MATON_SECRET_ID,
+  MATON_SHEETS_CONNECTION_ID,
+  INVENTORY_SPREADSHEET_ID = "13WF8Z2r88IMG-Bwvmj_Ys1rGC5gP01O_bacZmTwzVZg",
+  INVENTORY_SHEET_NAME = "Inventory",
   INVENTORY_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/13WF8Z2r88IMG-Bwvmj_Ys1rGC5gP01O_bacZmTwzVZg/gviz/tq?tqx=out:csv&gid=232622180"
 } = process.env;
+
+let cachedMatonApiKey;
 
 function response(statusCode, body) {
   return {
@@ -23,6 +32,69 @@ function response(statusCode, body) {
     },
     body: JSON.stringify(body)
   };
+}
+
+function a1Range(sheetName, range) {
+  const escapedName = String(sheetName).replaceAll("'", "''");
+  return `'${escapedName}'!${range}`;
+}
+
+async function getMatonApiKey() {
+  if (cachedMatonApiKey) {
+    return cachedMatonApiKey;
+  }
+
+  if (MATON_API_KEY) {
+    cachedMatonApiKey = MATON_API_KEY;
+    return cachedMatonApiKey;
+  }
+
+  if (!MATON_SECRET_ID) {
+    return "";
+  }
+
+  const secret = await secrets.send(new GetSecretValueCommand({ SecretId: MATON_SECRET_ID }));
+  cachedMatonApiKey = secret.SecretString || "";
+  return cachedMatonApiKey;
+}
+
+async function matonRequest(path, { method = "GET", body } = {}) {
+  const apiKey = await getMatonApiKey();
+  if (!apiKey) {
+    throw new Error("MATON_API_KEY or MATON_SECRET_ID is required for Google Sheets updates.");
+  }
+
+  const headers = {
+    Authorization: `Bearer ${apiKey}`
+  };
+
+  if (MATON_SHEETS_CONNECTION_ID) {
+    headers["Maton-Connection"] = MATON_SHEETS_CONNECTION_ID;
+  }
+
+  if (body) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const matonResponse = await fetch(`https://api.maton.ai${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined
+  });
+
+  const text = await matonResponse.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text };
+  }
+
+  if (!matonResponse.ok) {
+    throw new Error(`Maton request failed: ${matonResponse.status} ${JSON.stringify(data).slice(0, 500)}`);
+  }
+
+  return data;
 }
 
 function parseCsv(text) {
@@ -94,6 +166,11 @@ function rowsToObjects(rows) {
 }
 
 async function getInventoryItems() {
+  const matonApiKey = await getMatonApiKey();
+  if (matonApiKey) {
+    return getInventoryItemsFromMaton();
+  }
+
   const sheetResponse = await fetch(INVENTORY_SHEET_CSV_URL);
   if (!sheetResponse.ok) {
     throw new Error(`inventory sheet fetch failed: ${sheetResponse.status}`);
@@ -120,8 +197,31 @@ async function getInventoryItems() {
     });
 }
 
-async function validateStockAvailability(payload) {
-  const inventory = await getInventoryItems();
+async function getInventoryItemsFromMaton() {
+  const range = encodeURIComponent(a1Range(INVENTORY_SHEET_NAME, "A:I"));
+  const data = await matonRequest(`/google-sheets/v4/spreadsheets/${INVENTORY_SPREADSHEET_ID}/values/${range}`);
+  const rows = rowsToObjects(data.values || []);
+
+  return rows
+    .filter((row) => row["item id"] && row["item name"])
+    .map((row, index) => {
+      const quantity = Number(row["current quantity"] || 0);
+      const reorderLevel = Number(row["reorder level"] || 0);
+
+      return {
+        item_id: row["item id"],
+        item_name: row["item name"],
+        category: row.category || "",
+        unit: row.unit || "",
+        current_quantity: Number.isFinite(quantity) ? quantity : 0,
+        reorder_level: Number.isFinite(reorderLevel) ? reorderLevel : 0,
+        in_stock: Number.isFinite(quantity) && quantity > 0,
+        row_number: index + 2
+      };
+    });
+}
+
+function validateStockAvailability(payload, inventory) {
   const inventoryById = new Map(inventory.map((item) => [item.item_id, item]));
   const unavailable = [];
 
@@ -147,6 +247,29 @@ async function validateStockAvailability(payload) {
     error.statusCode = 409;
     throw error;
   }
+}
+
+async function updateInventoryQuantities(payload, inventory) {
+  const inventoryById = new Map(inventory.map((item) => [item.item_id, item]));
+  const updates = payload.items.map((item) => {
+    const inventoryItem = inventoryById.get(item.item_id);
+    const nextQuantity = inventoryItem.current_quantity - item.quantity;
+
+    return {
+      range: a1Range(INVENTORY_SHEET_NAME, `G${inventoryItem.row_number}`),
+      values: [[nextQuantity]]
+    };
+  });
+
+  await matonRequest(`/google-sheets/v4/spreadsheets/${INVENTORY_SPREADSHEET_ID}/values:batchUpdate`, {
+    method: "POST",
+    body: {
+      valueInputOption: "USER_ENTERED",
+      data: updates
+    }
+  });
+
+  return updates;
 }
 
 function parseBody(event) {
@@ -224,7 +347,7 @@ function buildEmailText(payload) {
   ].join("\n");
 }
 
-async function storePayload(payload) {
+async function storePayload(payload, status = "pending") {
   await dynamo.send(new PutItemCommand({
     TableName: TABLE_NAME,
     Item: {
@@ -234,8 +357,29 @@ async function storePayload(payload) {
       job: { S: payload.job },
       type: { S: payload.type },
       source: { S: payload.source },
+      status: { S: status },
       item_count: { N: String(payload.items.length) },
       payload_json: { S: JSON.stringify(payload) }
+    },
+    ConditionExpression: "attribute_not_exists(request_id)"
+  }));
+}
+
+async function markPayloadStatus(requestId, status, details = {}) {
+  await dynamo.send(new UpdateItemCommand({
+    TableName: TABLE_NAME,
+    Key: {
+      request_id: { S: requestId }
+    },
+    UpdateExpression: "SET #status = :status, sheet_updated = :sheetUpdated, emailed = :emailed, status_detail = :detail",
+    ExpressionAttributeNames: {
+      "#status": "status"
+    },
+    ExpressionAttributeValues: {
+      ":status": { S: status },
+      ":sheetUpdated": { BOOL: Boolean(details.sheetUpdated) },
+      ":emailed": { BOOL: Boolean(details.emailed) },
+      ":detail": { S: details.detail || "" }
     }
   }));
 }
@@ -284,16 +428,55 @@ export const handler = async (event) => {
     }
 
     const payload = validatePayload(parseBody(event));
-    await validateStockAvailability(payload);
-    await storePayload(payload);
-    await sendEmail(payload);
+    const inventory = await getInventoryItems();
+    validateStockAvailability(payload, inventory);
+
+    try {
+      await storePayload(payload);
+    } catch (error) {
+      if (error.name === "ConditionalCheckFailedException") {
+        return response(409, {
+          status: "error",
+          message: "Duplicate checkout request."
+        });
+      }
+      throw error;
+    }
+
+    try {
+      await updateInventoryQuantities(payload, inventory);
+    } catch (error) {
+      await markPayloadStatus(payload.request_id, "sheet_update_failed", {
+        sheetUpdated: false,
+        emailed: false,
+        detail: error.message || "Sheet update failed"
+      });
+      throw error;
+    }
+
+    let emailed = false;
+    let emailError = "";
+    try {
+      await sendEmail(payload);
+      emailed = true;
+    } catch (error) {
+      console.error("Email notification failed", error);
+      emailError = error.message || "Email notification failed";
+    }
+
+    await markPayloadStatus(payload.request_id, "complete", {
+      sheetUpdated: true,
+      emailed,
+      detail: emailed ? "" : emailError || "Email notification skipped"
+    });
 
     return response(200, {
       status: "ok",
       request_id: payload.request_id,
       item_count: payload.items.length,
       stored: true,
-      emailed: true
+      sheet_updated: true,
+      emailed
     });
   } catch (error) {
     console.error(error);
