@@ -1,6 +1,6 @@
 ﻿# Miracle Method Inventory Checkout Automation
 
-![Project cover image](./assets/linkedin-project-cover.png)
+![Project architecture image](./assets/architecture-direct-sheets.png)
 
 ## Repository
 
@@ -21,10 +21,12 @@ I built this project to solve a very unglamorous but very real inventory problem
 | CDN / HTTPS | Amazon CloudFront | Public HTTPS delivery |
 | API Layer | Amazon API Gateway | Accepts form submissions |
 | Compute | AWS Lambda | Validates and processes checkouts |
-| Data Store | Amazon DynamoDB | Persists durable checkout events |
-| Email Automation | Amazon SES | Sends structured checkout emails |
-| Downstream Automation | OpenClaw | Reads email and updates inventory |
-| Inventory System of Record | Google Sheets | Current operational inventory source |
+| Data Store | Amazon DynamoDB | Persists durable checkout events and backend status |
+| Secret Management | AWS Secrets Manager | Stores private integration credentials outside the codebase |
+| Inventory Integration | Maton API | Connects Lambda to Google Sheets |
+| Email Notification | Amazon SES | Sends checkout receipts to the monitored operations inbox |
+| Monitoring Automation | OpenClaw | Watches inventory context and supports low-stock manager alerts |
+| Inventory System of Record | Google Sheets | Current operational inventory source, updated directly by Lambda |
 
 ## Project Summary
 
@@ -38,7 +40,7 @@ That gap caused real business damage:
 - Purchasing became reactive instead of planned
 - Technicians lost time working around missing materials
 
-The system introduced a lightweight technician-facing checkout workflow backed by AWS infrastructure. Technicians submit inventory usage from a mobile-friendly form, AWS stores the submission as a durable event, and the system forwards the checkout into the downstream automation process that OpenClaw uses to update inventory records. Nothing fancy for the sake of being fancy—just a practical system that fixes a practical mess.
+The system introduced a lightweight technician-facing checkout workflow backed by AWS infrastructure. Technicians submit inventory usage from a mobile-friendly form, Lambda validates the request, updates the live Google Sheets inventory through Maton, stores a durable audit record, and sends an operations receipt through SES. OpenClaw remains in the loop for monitoring and alerting, but the inventory update no longer depends on delayed email parsing. Nothing fancy for the sake of being fancy—just a practical system that fixes a practical mess.
 
 This project demonstrates practical full-stack and cloud engineering applied to a real workflow problem, not just a demo application.
 
@@ -47,7 +49,7 @@ This project demonstrates practical full-stack and cloud engineering applied to 
 ## Key Outcomes
 
 - Replaced an ad hoc, memory-driven inventory process with a structured cloud workflow
-- Created durable event storage for each technician's checkout
+- Created durable event storage and direct inventory updates for each technician's checkout
 - Reduced the risk of silent inventory depletion going unnoticed
 - Preserved compatibility with existing business operations instead of forcing a disruptive process rewrite
 - Established a foundation for future reorder automation, low-stock alerting, and internal reporting
@@ -56,11 +58,11 @@ This project demonstrates practical full-stack and cloud engineering applied to 
 
 ## Resume-Style Highlights
 
-- Designed and implemented a serverless inventory checkout system using `S3`, `CloudFront`, `API Gateway`, `Lambda`, `DynamoDB`, and `SES`
+- Designed and implemented a serverless inventory checkout system using `S3`, `CloudFront`, `API Gateway`, `Lambda`, `DynamoDB`, `Secrets Manager`, `SES`, and Google Sheets integration
 - Built a mobile-friendly frontend for technicians to submit paints, primers, and supply checkouts in the shop
-- Created an event-driven backend that validates requests, stores durable records, and routes structured inventory usage into downstream automation
+- Created an event-driven backend that validates requests, updates Google Sheets directly, stores durable records, and routes receipts into downstream automation
 - Solved a real operational issue where stock levels could quietly collapse before anyone knew a reorder was needed
-- Architected the system to preserve compatibility with existing Google Sheets and email-based business processes while creating a foundation for future low-stock automation
+- Architected the system to preserve compatibility with existing Google Sheets operations while removing email parsing from the critical inventory-update path
 
 ---
 
@@ -92,7 +94,7 @@ The solution needed to:
 - Support multiple inventory items per checkout
 - Keep secrets and private credentials out of browser code
 - Create a durable system-of-record event for each checkout
-- Feed into the existing OpenClaw + Google Sheets workflow
+- Update Google Sheets directly while keeping OpenClaw available for monitoring and low-stock alerting
 - Support future low-stock alerting and reorder automation
 
 ---
@@ -107,10 +109,10 @@ Technicians:
 
 - Open a public mobile-friendly inventory form
 - Select their name from a controlled dropdown
-- Optionally enter job or customer context
 - Select paints, primers, and supplies
 - Choose quantity for supply items
 - Submit the checkout
+- Review a submitted-order summary for screenshot reference
 
 ### Backend Processing
 
@@ -118,9 +120,12 @@ The backend:
 
 1. Receives the checkout over HTTPS
 2. Validates and normalizes the payload
-3. Stores the submission in DynamoDB
-4. Sends the checkout through SES email to the monitored operations inbox
-5. Supports downstream OpenClaw processing against Google Sheets inventory
+3. Checks live stock data before accepting the request
+4. Retrieves the private Google Sheets integration credential from Secrets Manager
+5. Updates the Google Sheets inventory through Maton
+6. Stores the submission and processing status in DynamoDB
+7. Sends a checkout receipt through SES to the monitored operations inbox
+8. Supports downstream OpenClaw monitoring and low-stock alerting
 
 This design creates both immediate workflow value and future automation flexibility.
 
@@ -134,12 +139,15 @@ flowchart TD
     B --> C["S3 Static Frontend"]
     A --> D["API Gateway"]
     D --> E["AWS Lambda"]
-    E --> F["DynamoDB"]
-    E --> G["Amazon SES"]
-    G --> H["Monitored Operations Inbox"]
-    H --> I["OpenClaw"]
-    I --> J["Google Sheets Inventory"]
-    I --> K["Future Low-Stock Alerting"]
+    E --> F["AWS Secrets Manager"]
+    E --> G["Maton API"]
+    G --> H["Google Sheets Inventory"]
+    E --> I["DynamoDB Audit Log"]
+    E --> J["Amazon SES Receipt"]
+    J --> K["Monitored Operations Inbox"]
+    H --> L["OpenClaw / Miracle Bot"]
+    K --> L
+    L --> M["Manager Low-Stock Alerts"]
 ```
 
 ---
@@ -152,31 +160,39 @@ sequenceDiagram
     participant FE as CloudFront + S3
     participant API as API Gateway
     participant L as Lambda
+    participant SM as Secrets Manager
+    participant M as Maton API
+    participant GS as Google Sheets
     participant DB as DynamoDB
     participant SES as Amazon SES
     participant INBOX as Monitored Inbox
     participant OC as OpenClaw
-    participant GS as Google Sheets
 
     T->>FE: Open inventory checkout form
     FE-->>T: Serve HTML/CSS/JS
     T->>API: POST checkout JSON
     API->>L: Invoke handler
     L->>L: Validate payload
-    L->>DB: Store durable event
-    L->>SES: Send structured email
-    SES->>INBOX: Deliver checkout message
-    L-->>T: Success response
-    OC->>INBOX: Read submission
-    OC->>OC: Parse item usage
-    OC->>GS: Update inventory sheet
+    L->>SM: Load integration secret
+    L->>M: Read current inventory
+    M->>GS: Fetch live stock values
+    L->>L: Reject unavailable or over-quantity items
+    L->>M: Apply accepted quantity changes
+    M->>GS: Update inventory rows
+    L->>DB: Store audit event and processing status
+    L->>SES: Send checkout receipt
+    SES->>INBOX: Deliver operations receipt
+    L-->>T: Success response with summary
+    OC->>GS: Monitor inventory context
+    OC->>INBOX: Read operational receipts when needed
+    OC->>OC: Evaluate low-stock conditions
 ```
 
 ---
 
 ## System Boundaries
 
-This repository covers the inventory-checkout-capture layer.
+This repository covers the inventory checkout application, AWS backend, direct Google Sheets update path, and public-safe documentation assets.
 
 ### Included in this project
 
@@ -184,12 +200,13 @@ This repository covers the inventory-checkout-capture layer.
 - Cloud ingestion endpoint
 - Payload validation
 - Durable event storage
-- Email routing into the monitored operations inbox
+- Direct Google Sheets inventory updates through Maton
+- Secret retrieval through AWS Secrets Manager
+- Email receipt routing into the monitored operations inbox
 
 ### Downstream but outside this repository
 
-- OpenClaw email parsing logic
-- Google Sheets inventory update logic
+- OpenClaw monitoring logic
 - Future reorder decisioning
 - Future manager alerting rules
 
@@ -247,8 +264,10 @@ Lambda handles the application logic:
 
 - Request validation
 - Payload normalization
+- Live stock checks
+- Google Sheets inventory updates through Maton
 - Durable write to DynamoDB
-- Outbound SES email trigger
+- Outbound SES receipt trigger
 
 Why it fits:
 
@@ -260,24 +279,48 @@ Why it fits:
 
 **Purpose:** durable submission store
 
-Every successful checkout is stored as a durable event record.
+Every checkout is stored as a durable event record with processing status.
 
 Why that matters:
 
-- Creates a system-of-record layer independent of email
-- Preserves data even if downstream processing is delayed
+- Creates an audit layer independent of email
+- Preserves request data and processing results
 - Supports auditability, reporting, and future dashboards
 
-### Amazon SES
+### AWS Secrets Manager
 
-**Purpose:** automated email handoff
+**Purpose:** private integration credential storage
 
-SES sends a structured email version of each checkout to the monitored mailbox that OpenClaw processes.
+Secrets Manager keeps the Maton integration credential out of browser JavaScript, GitHub, and static deployment assets.
 
 Why it fits:
 
-- Bridges AWS and the current business workflow
-- Enables automation without forcing a rewrite of downstream operations
+- Avoids hardcoding private credentials
+- Keeps secret access server-side inside Lambda
+- Supports safer credential rotation later
+
+### Maton API
+
+**Purpose:** Google Sheets integration bridge
+
+Maton gives Lambda a controlled way to read and update the live Google Sheets inventory workbook.
+
+Why it fits:
+
+- Keeps Google account access outside the frontend
+- Allows immediate inventory updates after checkout
+- Removes email parsing from the critical stock-update path
+
+### Amazon SES
+
+**Purpose:** automated checkout receipt
+
+SES sends a structured receipt version of each checkout to the monitored operations mailbox.
+
+Why it fits:
+
+- Gives the team an operational receipt for each checkout
+- Keeps OpenClaw and inbox-based monitoring compatible without making email the inventory-update mechanism
 
 ---
 
@@ -290,36 +333,38 @@ The frontend is intentionally simple and optimized for technician usage in the s
 Key UI capabilities:
 
 - Required technician dropdown
-- Optional job/customer field
 - Paints and primers section
 - Supplies section
-- Quantity control for supply items only
+- Quantity controls tuned by item type
 - Selected-items summary
+- Post-submit summary page for screenshots
 - Clear/reset action
 - Visible success and error feedback
 
 ### Backend
 
-The backend is a serverless ingestion layer that accepts structured checkout data, routes it to storage, and automates workflows.
+The backend is a serverless processing layer that accepts structured checkout data, updates live inventory, stores audit records, and sends operational receipts.
 
 Core responsibilities:
 
 - Accept JSON checkouts over HTTPS
 - Validate required input
-- Persist the event
-- Email the submission to the monitored inbox
+- Check requested quantities against live inventory
+- Update Google Sheets through Maton
+- Persist the event and processing status
+- Email the receipt to the monitored inbox
 
 ### Automation Handoff
 
-OpenClaw reads the monitored mailbox and updates the inventory spreadsheet.
+OpenClaw monitors the inventory context and operational receipts for low-stock awareness and manager notification workflows.
 
-This is an intentional transitional architecture:
+This is an intentional practical architecture:
 
-- It solves the inventory capture problem immediately
+- It updates inventory immediately
 - It preserves compatibility with the current workflow
-- It leaves room for more advanced automation later
+- It leaves room for more advanced alerting and reporting later
 
-In other words, I did not rip out the whole process and replace it with something “more modern” just to make a prettier architecture diagram. I fixed the part that was actually costing the business time and money.
+In other words, I did not rip out the whole process and replace it with something “more modern” just to make a prettier architecture diagram. I fixed the part that was actually costing the business time and money, then tightened the weak spot where email parsing could delay inventory updates.
 
 ---
 
@@ -330,11 +375,11 @@ flowchart LR
     A["Technician finishes a job prep"] --> B["Opens the form on phone"]
     B --> C["Checks out supplies and coatings"]
     C --> D["Submits structured payload"]
-    D --> E["AWS stores submission"]
-    E --> F["AWS emails the monitored inbox"]
-    F --> G["OpenClaw reads submission later"]
-    G --> H["Inventory sheet gets updated"]
-    H --> I["Low-stock logic can trigger reorder awareness"]
+    D --> E["AWS validates live stock"]
+    E --> F["Lambda updates Google Sheets"]
+    F --> G["DynamoDB stores audit status"]
+    G --> H["SES sends operations receipt"]
+    H --> I["OpenClaw monitors for low-stock awareness"]
 ```
 
 ---
@@ -362,7 +407,7 @@ Each item includes:
 This structured model supports:
 
 - Durable event logging
-- Downstream parsing
+- Direct inventory updates
 - Historical reporting
 - Low-stock analysis
 - Future reorder automation
@@ -385,22 +430,22 @@ A plain HTML/CSS/JavaScript frontend was the right decision because it kept comp
 
 The workload is event-driven and intermittent. Lambda and API Gateway are a better fit than maintaining a traditional backend service for relatively small bursts of traffic.
 
-### 3. DynamoDB Plus Email Instead of Email Alone
+### 3. DynamoDB Plus Direct Sheet Updates Instead of Email Alone
 
-Email is useful for workflow integration, but it is not a durable system of record on its own.
+Email is useful for workflow visibility, but it is not a durable system of record and it should not be the only mechanism responsible for inventory accuracy.
 
-DynamoDB adds:
+The current design adds:
 
-- Persistence
-- Recoverability
-- Traceability
+- Google Sheets updates at checkout time
+- DynamoDB persistence and recoverability
+- Traceability for each backend result
 - Future reporting capability
 
 ### 4. Compatibility With Existing Business Operations
 
 The goal was not to replace every existing process at once. The goal was to fix the highest-value failure point first: inventory usage capture.
 
-Routing structured data into the monitored inbox preserved continuity while significantly improving data capture quality.
+Updating Google Sheets directly fixed the critical inventory accuracy problem, while SES receipts and OpenClaw monitoring preserved continuity with the way the shop already works.
 
 That tradeoff matters. A technically “perfect” system that nobody adopts is useless. A practical system that fits the way people already work is usually the better bet.
 
@@ -455,11 +500,11 @@ This repository reflects a practical production-minded first version, not a full
 
 Current limitations:
 
-- Google Sheets remains the source of truth downstream
-- OpenClaw still depends on inbox processing
-- Low-stock alerting is supported conceptually, but not fully implemented end-to-end here
+- Google Sheets remains the operational source of truth
+- Low-stock alerting depends on OpenClaw/manager notification rules outside this repo
 - There is no internal manager dashboard yet
 - Authentication and role-based access are not yet implemented
+- The public frontend should be hardened further if the app expands beyond controlled internal use
 
 These are future enhancement opportunities, not architectural failures.
 
@@ -472,6 +517,7 @@ This project was intentionally structured to avoid leaking sensitive logic into 
 Security-conscious design choices include:
 
 - No API keys or credentials stored in browser JavaScript
+- Private integration credential stored in AWS Secrets Manager
 - Backend processing isolated inside AWS Lambda
 - Durable storage handled server-side
 - Email delivery handled server-side through SES
@@ -491,7 +537,6 @@ The current version is optimized for internal operations, not for zero-trust pub
 
 ### Alerting and Reorder Logic
 
-- Compare checkouts against current stock automatically
 - Calculate threshold crossings
 - Notify managers when items hit reorder levels
 - Recommend reorder quantities
@@ -500,7 +545,7 @@ The current version is optimized for internal operations, not for zero-trust pub
 
 - Add inventory restock and delivery-confirmation workflows
 - Create vendor intake workflows
-- Support direct downstream integrations beyond email
+- Add richer manager-facing reporting beyond the checkout receipt
 
 ### Security and Governance
 
@@ -532,7 +577,7 @@ MiracleMethodInventory/
 ### Main Areas
 
 - `s3-inventory-form/` contains the technician-facing frontend
-- `aws-inventory-backend/` contains the Lambda ingestion logic
+- `aws-inventory-backend/` contains the Lambda processing and Google Sheets update logic
 - `n8n_*.json` contains related workflow and automation assets
 
 ---
@@ -546,7 +591,7 @@ This project shows the ability to:
 - Build a frontend suited to constrained real-world usage
 - Implement a serverless ingestion pipeline in AWS
 - Create durable event storage for operational traceability
-- Integrate cloud infrastructure with an automation-driven downstream process
+- Integrate AWS with Google Sheets through a server-side automation bridge
 - Make pragmatic architectural tradeoffs instead of overengineering
 
 This is not just a form. It is an end-to-end operational automation system built around a real inventory-control problem.
@@ -583,7 +628,7 @@ The purpose of this documentation is to explain the implementation, tradeoffs, a
 
 ## Employer-Facing Summary
 
-Built a serverless inventory checkout automation system to solve a real operational failure in which supply usage was not captured reliably and inventory shortages were discovered too late. Designed and implemented a mobile-friendly checkout frontend plus an AWS backend using S3, CloudFront, API Gateway, Lambda, DynamoDB, and SES. The system captures technician inventory usage as structured events, persists durable records, and routes submissions into downstream automation for inventory updates and future low-stock alerting.
+Built a serverless inventory checkout automation system to solve a real operational failure in which supply usage was not captured reliably and inventory shortages were discovered too late. Designed and implemented a mobile-friendly checkout frontend plus an AWS backend using S3, CloudFront, API Gateway, Lambda, DynamoDB, Secrets Manager, SES, Maton, and Google Sheets. The system captures technician inventory usage as structured events, validates live stock, updates the inventory sheet directly, persists durable audit records, and keeps OpenClaw available for monitoring and future low-stock alerting.
 
 
 
